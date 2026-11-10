@@ -1,0 +1,44 @@
+// Configuración de Cloudflare Workers para qr-mensajes.
+// Recursos: D1 (metadatos) + R2 (archivos multimedia) + assets estáticos.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "qr-mensajes",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+
+  // Frontend estático (SPA ligera sin framework).
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // El Worker decide el enrutamiento: /api/* y /f/* NO son archivos.
+    "run_worker_first": true
+  },
+
+  // Base de datos: crear con `npx wrangler d1 create qr-mensajes`
+  // y pegar aquí el database_id que devuelve el comando.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "qr-mensajes",
+      "database_id": "REEMPLAZAR_CON_EL_DATABASE_ID"
+    }
+  ],
+
+  // Bucket de archivos: crear con `npx wrangler r2 bucket create qr-mensajes-media`
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "qr-mensajes-media"
+    }
+  ],
+
+  // Limpieza diaria de mensajes expirados (06:00 UTC).
+  "triggers": {
+    "crons": ["0 6 * * *"]
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}

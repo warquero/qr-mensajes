@@ -1,0 +1,3 @@
+# Copiar este archivo como `.dev.vars` (no se sube a git) para desarrollo local.
+# En producción se define con: npx wrangler secret put ADMIN_TOKEN
+ADMIN_TOKEN=cambia-esto-en-desarrollo
