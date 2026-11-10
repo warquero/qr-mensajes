@@ -1,5 +1,6 @@
 import { el, fmtDateShort, fmtBytes } from "./dom.js";
 import { brandHeader, card } from "./components.js";
+import { SUPABASE } from "./config.js";
 
 const TOKEN_KEY = "qr_mensajes_admin_token";
 const KIND_ICON = { text: "✍️", audio: "🎙️", video: "🎥" };
@@ -33,7 +34,7 @@ function showGate(app) {
           const value = input.value.trim();
           if (!value) return;
           try {
-            await api(value, "/api/admin/messages");
+            await api(value, "list");
             localStorage.setItem(TOKEN_KEY, value);
             gate.replaceWith(showList(document.getElementById("app"), value));
           } catch {
@@ -47,10 +48,15 @@ function showGate(app) {
   app.append(gate);
 }
 
-async function api(token, path, options = {}) {
-  const res = await fetch(path, {
-    ...options,
-    headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) },
+/** Toda la API admin es POST JSON a la Edge Function con { action, ...payload }. */
+async function api(token, action, payload = {}) {
+  const res = await fetch(`${SUPABASE.url}/functions/v1/admin`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ action, ...payload }),
   });
   const body = await res.json().catch(() => ({}));
   if (res.status === 401) {
@@ -96,7 +102,7 @@ function showList(app, token) {
   async function load() {
     err.textContent = "";
     try {
-      const { messages } = await api(token, "/api/admin/messages");
+      const { messages } = await api(token, "list");
       if (!messages.length) {
         table.replaceChildren(el("p", { class: "loading" }, "Todavía no hay mensajes. Creá el primero en /crear."));
         return;
@@ -142,11 +148,7 @@ function showList(app, token) {
                       class: "btn btn--ghost btn--sm",
                       type: "button",
                       onclick: async () => {
-                        await api(token, `/api/admin/messages/${m.id}/active`, {
-                          method: "POST",
-                          headers: { "content-type": "application/json" },
-                          body: JSON.stringify({ active: m.active ? 0 : 1 }),
-                        });
+                        await api(token, "setActive", { id: m.id, active: !m.active });
                         load();
                       },
                     },
@@ -158,11 +160,7 @@ function showList(app, token) {
                       class: "btn btn--ghost btn--sm",
                       type: "button",
                       onclick: async () => {
-                        await api(token, `/api/admin/messages/${m.id}/extend`, {
-                          method: "POST",
-                          headers: { "content-type": "application/json" },
-                          body: JSON.stringify({ days: 90 }),
-                        });
+                        await api(token, "extend", { id: m.id, days: 90 });
                         load();
                       },
                     },
@@ -175,7 +173,7 @@ function showList(app, token) {
                       type: "button",
                       onclick: async () => {
                         if (!confirm(`¿Borrar el mensaje ${m.id} y su archivo? Esto no se puede deshacer.`)) return;
-                        await api(token, `/api/admin/messages/${m.id}`, { method: "DELETE" });
+                        await api(token, "delete", { id: m.id });
                         load();
                       },
                     },

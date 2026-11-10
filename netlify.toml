@@ -1,0 +1,25 @@
+# Netlify — sitio estático (plan gratuito) que consume el backend de Supabase.
+[build]
+  publish = "public"
+
+# SPA: toda ruta sin archivo sirve index.html (el router de app.js decide la vista).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Cabeceras de seguridad para todo el sitio.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; img-src 'self' data:; media-src 'self' https://giqlbmgaszqgvzorhdxr.supabase.co; style-src 'self'; script-src 'self'; connect-src 'self' https://giqlbmgaszqgvzorhdxr.supabase.co; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(self), microphone=(self), geolocation=()"
+
+# La librería de QR nunca cambia: cache inmutable.
+[[headers]]
+  for = "/vendor/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

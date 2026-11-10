@@ -1,5 +1,6 @@
 import { el, fmtBytes } from "./dom.js";
 import { brandHeader, card, footer } from "./components.js";
+import { SUPABASE } from "./config.js";
 
 const MAX_BYTES = 30 * 1024 * 1024;
 const MAX_TEXT = 2000;
@@ -361,7 +362,7 @@ export function renderCreate(app) {
 function upload(data, onProgress) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/messages");
+    xhr.open("POST", `${SUPABASE.url}/functions/v1/create-message`);
     xhr.responseType = "json";
     xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
     xhr.onload = () => {
@@ -374,6 +375,9 @@ function upload(data, onProgress) {
 }
 
 function showSuccess(box, result) {
+  // El QR apunta a la vista pública de ESTE dominio, nunca al archivo directo:
+  // si algún día cambia el hosting o el bucket, los QR ya impresos siguen vivos.
+  result.url = `${location.origin}/m/${result.id}`;
   const qr = window.qrcode(0, "M");
   qr.addData(result.url);
   qr.make();
