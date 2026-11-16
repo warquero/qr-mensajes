@@ -379,10 +379,10 @@ export function renderCreate(app) {
     data.set("kind", state.kind);
     data.set("days", String(state.days));
     if (state.kind === "text") data.set("text", textEl.value.trim());
-    const fromName = fromNameInput.value.replace(/\s+/g, " ").trim();
-    if (fromName) data.set("from_name", fromName);
     else if (state.blob) data.set("file", state.blob, state.kind === "audio" ? "mensaje.webm" : "mensaje.webm");
     else if (state.file) data.set("file", state.file, state.file.name);
+    const fromName = fromNameInput.value.replace(/\s+/g, " ").trim();
+    if (fromName) data.set("from_name", fromName);
 
     // Reemplaza el formulario con estado de subida + progreso real.
     const progressFill = el("div", { class: "progress__fill" });
