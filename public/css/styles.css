@@ -635,7 +635,8 @@ body {
   margin-bottom: 14px;
 }
 
-.qr svg {
+.qr svg,
+.qr canvas {
   width: min(280px, 70vw);
   height: auto;
 }

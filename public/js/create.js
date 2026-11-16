@@ -422,16 +422,16 @@ function upload(data, onProgress) {
   });
 }
 
-function showSuccess(box, result) {
+async function showSuccess(box, result) {
   // El QR apunta a la vista pública de ESTE dominio, nunca al archivo directo:
   // si algún día cambia el hosting o el bucket, los QR ya impresos siguen vivos.
   result.url = `${location.origin}/m/${result.id}`;
-  const qr = window.qrcode(0, "M");
-  qr.addData(result.url);
-  qr.make();
-  const svg = qr.createSvgTag({ cellSize: 6, margin: 2 });
+  // Canvas con módulos morados de marca y el logo circular superpuesto.
+  const canvas = createBrandedQrCanvas(result.url);
+  const logo = await loadLogo("/img/logo-shury.png");
+  drawLogoOnQr(canvas, logo);
   const qrHost = el("div", { class: "qr" });
-  qrHost.innerHTML = svg; // SVG generado localmente por la librería vendor, no por el usuario.
+  qrHost.append(canvas);
 
   const copyBtn = el("button", { class: "btn btn--ghost", type: "button" }, "Copiar enlace");
   copyBtn.addEventListener("click", async () => {
@@ -458,7 +458,7 @@ function showSuccess(box, result) {
         {
           class: "btn btn--ghost",
           type: "button",
-          onclick: () => downloadPng(svg, `qr-${result.id}.png`),
+          onclick: () => downloadPng(canvas, `qr-${result.id}.png`),
         },
         "Descargar QR (PNG)"
       ),
@@ -475,22 +475,61 @@ function showSuccess(box, result) {
   );
 }
 
-async function downloadPng(svgSvg, filename) {
-  const img = new Image();
-  const svgUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgSvg);
-  await new Promise((resolve, reject) => {
-    img.onload = resolve;
-    img.onerror = reject;
-    img.src = svgUrl;
-  });
-  const size = 720;
+// QR de marca: módulos morados (#83139D) dibujados en canvas, con margen
+// de silencio y corrección de errores "H" para tolerar el logo superpuesto.
+function createBrandedQrCanvas(url) {
+  const qr = window.qrcode(0, "H");
+  qr.addData(url);
+  qr.make();
+  const count = qr.getModuleCount();
+  const margin = 4; // módulos de zona de silencio alrededor
+  const cell = 8; // px por módulo
+  const size = (count + margin * 2) * cell;
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, size, size);
-  ctx.drawImage(img, 0, 0, size, size);
+  ctx.fillStyle = "#83139D"; // morado del logo Shury Store
+  for (let r = 0; r < count; r++) {
+    for (let c = 0; c < count; c++) {
+      if (qr.isDark(r, c)) ctx.fillRect((c + margin) * cell, (r + margin) * cell, cell, cell);
+    }
+  }
+  return canvas;
+}
+
+function loadLogo(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null); // sin logo, el QR queda igualmente funcional
+    img.src = src;
+  });
+}
+
+function drawLogoOnQr(canvas, logo) {
+  if (!logo) return;
+  const ctx = canvas.getContext("2d");
+  const size = canvas.width;
+  const cx = size / 2;
+  const cy = size / 2;
+  const haloR = size * 0.15; // círculo blanco detrás del logo
+  const d = size * 0.24; // diámetro del logo (~24% del QR)
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(cx, cy, haloR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, d / 2, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.drawImage(logo, cx - d / 2, cy - d / 2, d, d);
+  ctx.restore();
+}
+
+async function downloadPng(canvas, filename) {
   const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
   const a = el("a", { href: URL.createObjectURL(blob), download: filename });
   a.click();
