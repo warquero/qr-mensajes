@@ -9,6 +9,7 @@ const TYPES = [
   { kind: "text", icon: "✍️", label: "Texto", hint: "Palabras escritas" },
   { kind: "audio", icon: "🎙️", label: "Audio", hint: "Tu voz o una canción" },
   { kind: "video", icon: "🎥", label: "Video", hint: "Saludo en cámara" },
+  { kind: "image", icon: "🖼️", label: "Imagen", hint: "Foto con cariño" },
 ];
 
 export function renderCreate(app) {
@@ -59,7 +60,13 @@ export function renderCreate(app) {
     state.file = null;
     refreshValid();
     const node =
-      state.kind === "text" ? buildTextEditor() : state.kind === "audio" ? buildMediaEditor("audio") : buildMediaEditor("video");
+      state.kind === "text"
+        ? buildTextEditor()
+        : state.kind === "audio"
+          ? buildMediaEditor("audio")
+          : state.kind === "video"
+            ? buildMediaEditor("video")
+            : buildMediaEditor("image");
     contentBox = node;
     return node;
   }
@@ -86,7 +93,7 @@ export function renderCreate(app) {
   }
 
   function buildMediaEditor(kind) {
-    let mode = "record";
+    let mode = kind === "image" ? "upload" : "record";
     let editorBody = null;
     let stopRecorder = null;
 
@@ -103,8 +110,10 @@ export function renderCreate(app) {
       editorBody.replaceWith(nextBody);
       editorBody = nextBody;
     }
-    recordBtn.addEventListener("click", () => mode !== "record" && setMode("record"));
-    uploadBtn.addEventListener("click", () => mode !== "upload" && setMode("upload"));
+    if (kind !== "image") {
+      recordBtn.addEventListener("click", () => mode !== "record" && setMode("record"));
+      uploadBtn.addEventListener("click", () => mode !== "upload" && setMode("upload"));
+    }
 
     function setBlob(blob) {
       state.blob = blob;
@@ -120,14 +129,25 @@ export function renderCreate(app) {
       const input = el("input", {
         type: "file",
         class: "file-input",
-        accept: kind === "video" ? "video/mp4,video/webm,video/quicktime" : "audio/*",
+        accept:
+          kind === "video"
+            ? "video/mp4,video/webm,video/quicktime"
+            : kind === "image"
+              ? "image/jpeg,image/png,image/webp,image/gif"
+              : "audio/*",
         onchange: () => {
           const file = input.files && input.files[0];
           if (!file) return;
           const mime = (file.type || "").split(";")[0];
-          const okType = kind === "video" ? mime.startsWith("video/") : mime.startsWith("audio/");
+          const okType =
+            kind === "video"
+              ? mime.startsWith("video/")
+              : kind === "image"
+                ? mime.startsWith("image/")
+                : mime.startsWith("audio/");
+          const noun = kind === "video" ? "video" : kind === "image" ? "imagen" : "audio";
           if (!okType) {
-            alert(`Ese archivo no es un ${kind === "video" ? "video" : "audio"} válido.`);
+            alert(`Ese archivo no es un${noun === "imagen" ? "a" : ""} ${noun} válido.`);
             input.value = "";
             return;
           }
@@ -154,13 +174,18 @@ export function renderCreate(app) {
       );
     }
 
-    editorBody = buildRecorder();
-    recordBtn.classList.add("is-active");
+    editorBody = kind === "image" ? buildUploader() : buildRecorder();
+    if (kind === "image") {
+      uploadBtn.classList.add("is-active");
+      segment.hidden = true;
+    } else {
+      recordBtn.classList.add("is-active");
+    }
 
     return el(
       "div",
       { class: "editor editor--media" },
-      el("p", { class: "editor__label" }, kind === "audio" ? "Tu mensaje de voz" : "Tu video"),
+      el("p", { class: "editor__label" }, kind === "audio" ? "Tu mensaje de voz" : kind === "video" ? "Tu video" : "Tu imagen"),
       segment,
       editorBody
     );
@@ -267,7 +292,16 @@ export function renderCreate(app) {
     return wrap;
   }
 
-  // ---------- Paso 3: vigencia ----------
+  // ---------- Paso 3: firma (opcional) ----------
+  const fromNameInput = el("input", {
+    id: "msg-from",
+    class: "input",
+    type: "text",
+    maxlength: "60",
+    placeholder: "Ej.: María · en blanco queda genérico",
+  });
+
+  // ---------- Paso 4: vigencia ----------
   const daysSelect = el(
     "select",
     {
@@ -296,7 +330,19 @@ export function renderCreate(app) {
       el("h2", { class: "card__title" }, "1 · ¿Qué querés decir?"),
       choices
     ),
-    el("section", { class: "card fade-in" }, el("h2", { class: "card__title" }, "2 · Tu mensaje"), (contentBox = buildContent())),
+    el(
+      "section",
+      { class: "card fade-in" },
+      el("h2", { class: "card__title" }, "2 · Tu mensaje"),
+      contentBox = buildContent(),
+      el(
+        "div",
+        { class: "editor editor--from" },
+        el("label", { class: "editor__label", for: "msg-from" }, "¿De parte de quién? (opcional)"),
+        fromNameInput,
+        el("p", { class: "form__hint" }, "Aparece al pie del mensaje: “con cariño, de…”.")
+      )
+    ),
     el(
       "section",
       { class: "card fade-in" },
@@ -333,6 +379,8 @@ export function renderCreate(app) {
     data.set("kind", state.kind);
     data.set("days", String(state.days));
     if (state.kind === "text") data.set("text", textEl.value.trim());
+    const fromName = fromNameInput.value.replace(/\s+/g, " ").trim();
+    if (fromName) data.set("from_name", fromName);
     else if (state.blob) data.set("file", state.blob, state.kind === "audio" ? "mensaje.webm" : "mensaje.webm");
     else if (state.file) data.set("file", state.file, state.file.name);
 

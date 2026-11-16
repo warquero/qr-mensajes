@@ -63,7 +63,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     case "list": {
       const { data, error } = await supabase
         .from("messages")
-        .select("id, kind, text, media_size, created_at, expires_at, active, views")
+        .select("id, kind, text, from_name, media_size, created_at, expires_at, active, views")
         .order("created_at", { ascending: false })
         .limit(200);
       if (error) return json({ error: error.message }, 500);

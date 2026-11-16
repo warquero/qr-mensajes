@@ -1,5 +1,5 @@
 import { el, fmtDateLong } from "./dom.js";
-import { brandHeader, card, footer } from "./components.js";
+import { brandHeader, card, footer, socialLinks } from "./components.js";
 import { SUPABASE } from "./config.js";
 
 export async function renderView(app, id) {
@@ -48,7 +48,7 @@ export async function renderView(app, id) {
       "p",
       { class: "view__meta" },
       `Vence el ${fmtDateLong(row.expires_at)} · `,
-      el("a", { href: "/", class: "view__brand" }, "con cariño, de quien te lo regaló")
+      el("strong", { class: "view__signature" }, row.from_name ? `con cariño, de ${row.from_name}` : "con cariño, de quien te lo regaló")
     ),
   ].filter(Boolean);
   box.replaceChildren(...parts);
@@ -67,7 +67,7 @@ export async function renderView(app, id) {
     }).catch(() => {});
   }
 
-  app.append(footer());
+  app.append(socialLinks(), footer());
 }
 
 function renderMedia(row, mediaUrl) {
@@ -81,6 +81,9 @@ function renderMedia(row, mediaUrl) {
       src: mediaUrl,
     });
   }
+  if (row.kind === "image") {
+    return el("img", { class: "view__media", src: mediaUrl, alt: "Imagen adjunta al mensaje", loading: "lazy" });
+  }
   return el("audio", { class: "view__media", controls: true, preload: "metadata", src: mediaUrl });
 }
 
@@ -91,5 +94,5 @@ function renderError(box, message) {
     el("p", { class: "error__detail" }, message || "Intentá de nuevo en unos minutos."),
     el("p", { class: "error__hint" }, "Si te regalaron un producto con QR, avisale al taller para que lo revise.")
   );
-  app.append(footer());
+  app.append(socialLinks(), footer());
 }

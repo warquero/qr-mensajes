@@ -11,6 +11,7 @@ const CORS = {
 };
 
 const MAX_TEXT = 2000;
+const MAX_FROM_NAME = 60;
 const MAX_BYTES = 30 * 1024 * 1024; // 30 MB
 const VALID_DAYS = new Set([30, 90, 365]);
 
@@ -25,6 +26,10 @@ const ALLOWED_MEDIA: Record<string, { kind: string; ext: string }> = {
   "video/mp4": { kind: "video", ext: "mp4" },
   "video/webm": { kind: "video", ext: "webm" },
   "video/quicktime": { kind: "video", ext: "mov" },
+  "image/jpeg": { kind: "image", ext: "jpg" },
+  "image/png": { kind: "image", ext: "png" },
+  "image/webp": { kind: "image", ext: "webp" },
+  "image/gif": { kind: "image", ext: "gif" },
 };
 
 const ALPHABET = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -54,7 +59,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const form = await req.formData();
 
     const kind = String(form.get("kind") ?? "");
-    if (kind !== "text" && kind !== "audio" && kind !== "video") {
+    if (kind !== "text" && kind !== "audio" && kind !== "video" && kind !== "image") {
       return json({ error: "Tipo de mensaje inválido." }, 400);
     }
 
@@ -62,6 +67,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const text = typeof rawText === "string" && rawText.trim() ? rawText.trim() : null;
     if (text && text.length > MAX_TEXT) {
       return json({ error: `El texto no puede superar ${MAX_TEXT} caracteres.` }, 400);
+    }
+
+    // Firma opcional: nombre de quien regala ("con cariño, de <from_name>").
+    const rawFromName = form.get("from_name");
+    let fromName =
+      typeof rawFromName === "string" && rawFromName.trim()
+        ? rawFromName.replace(/\s+/g, " ").trim().slice(0, MAX_FROM_NAME)
+        : null;
+    // Evita el doble "de" ("de de María") si el taller escribe el prefijo.
+    if (fromName) {
+      fromName = fromName.replace(/^de\s+/, "").trim() || null;
     }
 
     const daysRaw = Number(form.get("days") ?? 365);
@@ -74,7 +90,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
       if (!text) return json({ error: "Escribí el mensaje que va en el QR." }, 400);
       if (file) return json({ error: "Un mensaje de texto no lleva archivo." }, 400);
     } else if (!file) {
-      return json({ error: kind === "audio" ? "Falta el audio." : "Falta el video." }, 400);
+      const label: Record<string, string> = { audio: "Falta el audio.", video: "Falta el video.", image: "Falta la imagen." };
+      return json({ error: label[kind] ?? "Falta el archivo." }, 400);
     }
 
     let mime = "";
@@ -83,7 +100,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       mime = (file.type || "").split(";")[0].trim();
       const allowed = ALLOWED_MEDIA[mime];
       if (!allowed || allowed.kind !== kind) {
-        return json({ error: "Formato de archivo no permitido. Usá MP4/WebM para video o MP3/M4A/OGG/WAV/WebM para audio." }, 415);
+        return json({ error: "Formato de archivo no permitido. Usá MP4/WebM para video, MP3/M4A/OGG/WAV/WebM para audio o JPG/PNG/WEBP/GIF para imagen." }, 415);
       }
       if (file.size > MAX_BYTES) {
         return json({ error: "El archivo supera el límite de 30 MB. Grabá un video más corto." }, 413);
@@ -117,6 +134,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       id,
       kind,
       text,
+      from_name: fromName,
       media_key: mediaKey,
       media_mime: mime || null,
       media_size: file ? file.size : null,

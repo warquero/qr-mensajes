@@ -3,7 +3,7 @@ import { brandHeader, card } from "./components.js";
 import { SUPABASE } from "./config.js";
 
 const TOKEN_KEY = "qr_mensajes_admin_token";
-const KIND_ICON = { text: "✍️", audio: "🎙️", video: "🎥" };
+const KIND_ICON = { text: "✍️", audio: "🎙️", video: "🎥", image: "🖼️" };
 
 export function renderAdmin(app) {
   app.append(brandHeader());
