@@ -12,7 +12,7 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    Content-Security-Policy = "default-src 'self'; img-src 'self' data:; media-src 'self' https://giqlbmgaszqgvzorhdxr.supabase.co; style-src 'self'; script-src 'self'; connect-src 'self' https://giqlbmgaszqgvzorhdxr.supabase.co; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+    Content-Security-Policy = "default-src 'self'; img-src 'self' data: https://giqlbmgaszqgvzorhdxr.supabase.co; media-src 'self' https://giqlbmgaszqgvzorhdxr.supabase.co; style-src 'self'; script-src 'self'; connect-src 'self' https://giqlbmgaszqgvzorhdxr.supabase.co; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
     X-Content-Type-Options = "nosniff"
     X-Frame-Options = "DENY"
     Referrer-Policy = "strict-origin-when-cross-origin"
